@@ -56,6 +56,8 @@ def main():
         summary.to_csv(args.path / f"summary_round_{args.round - 1}.csv")
         rmse, max_resid = get_ranking_metrics(games, ratings)
         print(f"RMSE: {rmse:.4f}, Max Resid: {max_resid:.4f}")
+        if max_resid > 1:
+            raise ValueError("Ratings were not calculated correctly.")
 
     game_ids = [f"G-{args.round}-{i + 1}" for i in range(n_games_per_round)]
     games_next = generate_next_round(ratings, games, game_ids, args.round)

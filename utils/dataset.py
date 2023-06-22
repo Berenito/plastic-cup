@@ -133,3 +133,4 @@ def reorder_games_by_win(games: pd.DataFrame) -> pd.DataFrame:
         games.loc[idx_bad_w_l, ["Team_1", "Team_2", "Score_1", "Score_2"]] = games.loc[
             idx_bad_w_l, ["Team_2", "Team_1", "Score_2", "Score_1"]
         ].values
+    return games
