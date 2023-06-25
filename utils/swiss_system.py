@@ -41,7 +41,15 @@ def get_minimal_pairing(ratings: pd.Series, games: pd.DataFrame) -> t.List[t.Tup
     """
     ratings_np = ratings.values
     teams = ratings.index.tolist()
-    pairing_costs = pd.DataFrame((ratings_np[:, None] - ratings_np[None, :]) ** 2, index=teams, columns=teams)
+    pairing_costs = pd.DataFrame(
+        (ratings_np[:, None] - ratings_np[None, :]) ** 2, index=teams, columns=teams, dtype=float
+    )
+    if len(teams) % 2 == 1:
+        pairing_costs["pickup"] = 0
+        pairing_costs.loc["pickup"] = 0
+        pairing_costs.loc["pickup", "pickup"] = np.nan
+        ratings = ratings.copy()
+        ratings["pickup"] = -np.inf
     for team in teams:
         pairing_costs.loc[team, team] = np.nan
     for _, rw in games.iterrows():
@@ -51,7 +59,6 @@ def get_minimal_pairing(ratings: pd.Series, games: pd.DataFrame) -> t.List[t.Tup
     pairing_costs = pairing_costs.stack().reset_index()
     pairing_costs.columns = ["source", "target", "weight"]
     pairing_costs["weight"] = 1 + pairing_costs["weight"].max() - pairing_costs["weight"]
-    # pairing_costs = pairing_costs.loc[pairing_costs["source"] < pairing_costs["target"]]
     g = nx.from_pandas_edgelist(pairing_costs, edge_attr="weight")
     pairs = [p if ratings[p[0]] >= ratings[p[1]] else p[::-1] for p in nx.max_weight_matching(g)]
     return sorted(pairs, key=lambda x: ratings[x[0]] + ratings[x[1]])[::-1]

@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from definitions import N_ROUNDS_GROUP, N_ROUNDS_PLAYOFF
@@ -38,8 +39,13 @@ def main():
 
     with open(args.path / "team_names.txt", "r") as f:
         team_names = f.read().split("\n")
+    if len(set([t.lower() for t in team_names])) != len(team_names):
+        raise RuntimeError("All team names must be unique.")
+    if "pickup" in [t.lower() for t in team_names]:
+        raise RuntimeError("'Pickup' is a reserved team name and cannot be used.")
     n_teams = len(team_names)
-    n_games_per_round = n_teams // 2
+    n_games_per_round = int(np.ceil(n_teams / 2))
+    team_names = pd.Series(team_names, name="Team")
 
     if args.round == 1:
         games = pd.DataFrame(columns=["Round", "Team_1", "Team_2", "Score_1", "Score_2"])
@@ -51,12 +57,12 @@ def main():
         if games.isna().any().any():
             raise ValueError("Games contain invalid entries.")
         # Calculate summary of the previous round
-        ratings = calculate_windmill_ratings(games)
-        summary = get_summary_of_games(games, ratings)
+        ratings = calculate_windmill_ratings(games, team_names)
+        summary = get_summary_of_games(games, ratings, team_names)
         summary.to_csv(args.path / f"summary_round_{args.round - 1}.csv")
         rmse, max_resid = get_ranking_metrics(games, ratings)
         print(f"RMSE: {rmse:.4f}, Max Resid: {max_resid:.4f}")
-        if max_resid > 1:
+        if max_resid > 0.1:
             raise ValueError("Ratings were not calculated correctly.")
 
     game_ids = [f"G-{args.round}-{i + 1}" for i in range(n_games_per_round)]
