@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from definitions import N_ROUNDS_GROUP, N_ROUNDS_PLAYOFF
+from definitions import N_ROUNDS_GROUP, N_ROUNDS_PLAYOFF, MAX_SCORE
 from utils.dataset import get_summary_of_games, get_ranking_metrics
 from utils.ratings import calculate_windmill_ratings
 from utils.swiss_system import generate_next_round
@@ -40,9 +40,9 @@ def main():
     with open(args.path / "team_names.txt", "r") as f:
         team_names = f.read().split("\n")
     if len(set([t.lower() for t in team_names])) != len(team_names):
-        raise RuntimeError("All team names must be unique.")
+        raise ValueError("All team names must be unique.")
     if "pickup" in [t.lower() for t in team_names]:
-        raise RuntimeError("'Pickup' is a reserved team name and cannot be used.")
+        raise ValueError("'Pickup' is a reserved team name and cannot be used.")
     n_teams = len(team_names)
     n_games_per_round = int(np.ceil(n_teams / 2))
     team_names = pd.Series(team_names, name="Team")
@@ -54,8 +54,10 @@ def main():
         # Load all the games from previous rounds
         games_list = [pd.read_csv(args.path / f"games_round_{i + 1}.csv", index_col=0) for i in range(args.round - 1)]
         games = pd.concat(games_list)
-        if games.isna().any().any():
+        if (games[["Score_1", "Score_2"]].dtypes == "object").any() or games.isna().any().any():
             raise ValueError("Games contain invalid entries.")
+        if (games[["Score_1", "Score_2"]] > MAX_SCORE).any().any():
+            raise ValueError(f"Score bigger than {MAX_SCORE} detected.")
         # Calculate summary of the previous round
         ratings = calculate_windmill_ratings(games, team_names)
         summary = get_summary_of_games(games, ratings, team_names)

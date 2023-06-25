@@ -10,3 +10,5 @@ RNG = np.random.default_rng(42)
 
 N_ROUNDS_GROUP = 5
 N_ROUNDS_PLAYOFF = 3
+
+MAX_SCORE = 15
