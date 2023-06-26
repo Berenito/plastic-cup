@@ -4,6 +4,8 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
+from definitions import MAX_SCORE_DIFF
+
 
 def duplicate_games(df_games: pd.DataFrame) -> pd.DataFrame:
     """
@@ -102,7 +104,7 @@ def get_ranking_metrics(games: pd.DataFrame, ratings: pd.Series) -> t.Tuple[floa
     :return: RMSE; max avg of teams' residuals
     """
     games = reorder_games_by_win(games.copy())
-    games["Game_Rank_Diff"] = games["Score_1"] - games["Score_2"]
+    games["Game_Rank_Diff"] = (games["Score_1"] - games["Score_2"]).clip(upper=MAX_SCORE_DIFF)
     games["Team_Rank_Diff"] = ratings.reindex(games["Team_1"]).values - ratings.reindex(games["Team_2"]).values
     games["Resid_1"] = games[f"Game_Rank_Diff"] - games[f"Team_Rank_Diff"]
     games["Resid_2"] = -games["Resid_1"]

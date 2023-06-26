@@ -1,7 +1,8 @@
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 
-from utils.dataset import get_games_graph, get_graph_components, get_teams_in_games, reorder_games_by_win
+from definitions import MAX_SCORE_DIFF
+from utils.dataset import get_games_graph, get_graph_components, reorder_games_by_win
 
 
 def calculate_windmill_ratings(
@@ -18,7 +19,7 @@ def calculate_windmill_ratings(
     """
     games = games.loc[~(games[["Team_1", "Team_2"]] == "pickup").any(axis=1)]
     games = reorder_games_by_win(games.copy())
-    games["Game_Rank_Diff"] = games["Score_1"] - games["Score_2"]
+    games["Game_Rank_Diff"] = (games["Score_1"] - games["Score_2"]).clip(upper=MAX_SCORE_DIFF)
     components = get_graph_components(get_games_graph(games), teams)
 
     coefficients = pd.Series(0, index=teams, dtype="float64")

@@ -1,13 +1,16 @@
 import argparse
+import warnings
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from definitions import N_ROUNDS_GROUP, N_ROUNDS_PLAYOFF, MAX_SCORE
+from definitions import N_ROUNDS_GROUP, N_ROUNDS_PLAYOFF
 from utils.dataset import get_summary_of_games, get_ranking_metrics, get_teams_in_games, reorder_games_by_win
 from utils.ratings import calculate_windmill_ratings
 from utils.swiss_system import generate_next_round
+
+warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
 
 def main():
@@ -58,8 +61,6 @@ def main():
         games = pd.concat(games_list)
         if (games[["Score_1", "Score_2"]].dtypes == "object").any() or games.isna().any().any():
             raise ValueError("Games contain invalid entries.")
-        if (games[["Score_1", "Score_2"]] > MAX_SCORE).any().any():
-            raise ValueError(f"Score bigger than {MAX_SCORE} detected.")
         if (games["Score_1"] == games["Score_2"]).any():
             raise ValueError("Draws are not allowed.")
         # Calculate summary of the previous round

@@ -50,11 +50,11 @@ def get_minimal_pairing(ratings: pd.Series, games: pd.DataFrame) -> t.List[t.Tup
         pairing_costs.loc["pickup"] = 0
         pairing_costs.loc["pickup", "pickup"] = np.nan
         ratings = ratings.copy()
-        ratings["pickup"] = -np.inf
+        ratings["pickup"] = -np.inf  # For ordering purposes
     for team in teams:
         pairing_costs.loc[team, team] = np.nan
     for _, rw in games.iterrows():
-        if rw["Team_1"] in teams and rw["Team_2"] in teams:
+        if rw["Team_1"] in teams + ["pickup"] and rw["Team_2"] in teams + ["pickup"]:
             pairing_costs.loc[rw["Team_1"], rw["Team_2"]] = np.nan
             pairing_costs.loc[rw["Team_2"], rw["Team_1"]] = np.nan
     pairing_costs = pairing_costs.stack().reset_index()
