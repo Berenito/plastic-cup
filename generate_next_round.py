@@ -6,9 +6,14 @@ import numpy as np
 import pandas as pd
 
 from definitions import N_ROUNDS_GROUP, N_ROUNDS_PLAYOFF
-from utils.dataset import get_summary_of_games, get_ranking_metrics, get_teams_in_games, reorder_games_by_win
-from utils.ratings import calculate_windmill_ratings
-from utils.swiss_system import generate_next_round
+from utils import (
+    calculate_windmill_ratings,
+    generate_swiss_round,
+    get_summary_of_games,
+    get_ranking_metrics,
+    get_teams_in_games,
+    reorder_games_by_win,
+)
 
 warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
@@ -107,7 +112,7 @@ def main():
                 for ib, ig in zip(idx_better, idx_game)
             ]
 
-        games_next = generate_next_round(ratings, games, game_ids, args.round, pairs_playoffs)
+        games_next = generate_swiss_round(ratings, games, game_ids, args.round, pairs_playoffs)
         games_next.to_csv(args.path / f"games_round_{args.round}.csv")
 
 
