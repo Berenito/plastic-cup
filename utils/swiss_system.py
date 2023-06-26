@@ -27,6 +27,7 @@ def generate_next_round(
     n_games_playoffs = len(pairs_playoffs)
     if pairs_playoffs:
         games_next.loc[game_ids[: n_games_playoffs] , ["Team_1", "Team_2"]] = pairs_playoffs
+    ratings = ratings.loc[~ratings.index.isin([team for pair in pairs_playoffs for team in pair])]
     games_next.loc[game_ids[n_games_playoffs :], ["Team_1", "Team_2"]] = get_minimal_pairing(ratings, games)
     return games_next
 

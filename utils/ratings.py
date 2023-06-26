@@ -23,8 +23,6 @@ def calculate_windmill_ratings(
 
     coefficients = pd.Series(0, index=teams, dtype="float64")
     for i_comp, comp in components.reset_index().groupby("Component"):
-        # if len(comp) == 1:
-        #     continue
         teams_comp = comp["Team"]
         df_comp = games.loc[games["Team_1"].isin(teams_comp) | games["Team_2"].isin(teams_comp)].reset_index()
         df_comp["const"] = 1

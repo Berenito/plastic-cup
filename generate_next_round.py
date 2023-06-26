@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from definitions import N_ROUNDS_GROUP, N_ROUNDS_PLAYOFF, MAX_SCORE
-from utils.dataset import get_summary_of_games, get_ranking_metrics
+from utils.dataset import get_summary_of_games, get_ranking_metrics, get_teams_in_games, reorder_games_by_win
 from utils.ratings import calculate_windmill_ratings
 from utils.swiss_system import generate_next_round
 
@@ -19,7 +19,7 @@ def main():
     args = parser.parse_args()
 
     # Check if round number is valid
-    if not 0 < args.round <= N_ROUNDS_GROUP + N_ROUNDS_PLAYOFF:
+    if not 0 < args.round <= N_ROUNDS_GROUP + N_ROUNDS_PLAYOFF + 1:
         raise ValueError("Invalid round number.")
 
     # Check if output files do not exist already (otherwise they can be overwritten by mistake)
@@ -46,6 +46,8 @@ def main():
     n_teams = len(team_names)
     n_games_per_round = int(np.ceil(n_teams / 2))
     team_names = pd.Series(team_names, name="Team")
+    n_playoff_teams = 2 ** N_ROUNDS_PLAYOFF
+    n_games_playoffs = n_playoff_teams // 2
 
     if args.round == 1:
         games = pd.DataFrame(columns=["Round", "Team_1", "Team_2", "Score_1", "Score_2"])
@@ -58,18 +60,54 @@ def main():
             raise ValueError("Games contain invalid entries.")
         if (games[["Score_1", "Score_2"]] > MAX_SCORE).any().any():
             raise ValueError(f"Score bigger than {MAX_SCORE} detected.")
+        if (games["Score_1"] == games["Score_2"]).any():
+            raise ValueError("Draws are not allowed.")
         # Calculate summary of the previous round
-        ratings = calculate_windmill_ratings(games, team_names)
-        summary = get_summary_of_games(games, ratings, team_names)
-        summary.to_csv(args.path / f"summary_round_{args.round - 1}.csv")
-        rmse, max_resid = get_ranking_metrics(games, ratings)
+        games_swiss = games.loc[games.index.str.startswith("G")]
+        games_playoffs = games.loc[games.index.str.startswith("P")]
+        ratings = calculate_windmill_ratings(games_swiss, team_names)
+        summary = get_summary_of_games(games_swiss, ratings, team_names)
+        rmse, max_resid = get_ranking_metrics(games_swiss, ratings)
         print(f"RMSE: {rmse:.4f}, Max Resid: {max_resid:.4f}")
         if max_resid > 0.1:
             raise ValueError("Ratings were not calculated correctly.")
+        if args.round > N_ROUNDS_GROUP + 1:
+            summary = summary.loc[~summary.index.isin(get_teams_in_games(games_playoffs))]
+        summary.to_csv(args.path / f"summary_round_{args.round - 1}.csv")
 
-    game_ids = [f"G-{args.round}-{i + 1}" for i in range(n_games_per_round)]
-    games_next = generate_next_round(ratings, games, game_ids, args.round)
-    games_next.to_csv(args.path / f"games_round_{args.round}.csv")
+    if args.round <= N_ROUNDS_GROUP + N_ROUNDS_PLAYOFF:
+        if args.round <= N_ROUNDS_GROUP:
+            game_ids = [f"G-{args.round}-{i + 1}" for i in range(n_games_per_round)]
+            pairs_playoffs = []
+        else:
+            n_remain = N_ROUNDS_GROUP + N_ROUNDS_PLAYOFF - args.round + 1
+            idx_better = [2 ** n_remain * (i // (2 ** (n_remain - 1))) + 1 for i in range(n_games_playoffs)]
+            idx_game = [i % (2 ** (n_remain - 1)) + 1 for i in range(n_games_playoffs)]
+            game_ids_playoffs = [
+                f"P-{ib}{ib + 2 ** n_remain - 1}-{ig}" for ib, ig in zip(idx_better, idx_game)
+            ]
+            game_ids_swiss = [f"G-{args.round}-{i + 1}" for i in range(n_games_per_round - n_games_playoffs)]
+            game_ids = game_ids_playoffs + game_ids_swiss
+            if args.round == N_ROUNDS_GROUP + 1:
+                # Generate first playoff pairs based on the ratings
+                playoff_teams = ratings.index[: n_playoff_teams].tolist()
+            else:
+                # Generate next playoff pairs based on the results
+                games_playoffs_use = reorder_games_by_win(games_playoffs.loc[games_playoffs["Round"] == args.round - 1])
+                places = games_playoffs_use.index.map(lambda x: x.split("-")[1]).values
+                games_playoffs_use["Places"] = places
+                playoff_teams = [
+                    team
+                    for _, g in games_playoffs_use.groupby("Places")
+                    for team in g["Team_1"].tolist() + g["Team_2"].tolist()
+                ]
+            pairs_playoffs = [
+                (playoff_teams[(ib - 1) + (ig - 1)], playoff_teams[ib + 2 ** n_remain - 1 - ig])
+                for ib, ig in zip(idx_better, idx_game)
+            ]
+
+        games_next = generate_next_round(ratings, games, game_ids, args.round, pairs_playoffs)
+        games_next.to_csv(args.path / f"games_round_{args.round}.csv")
 
 
 if __name__ == "__main__":

@@ -31,12 +31,7 @@ def get_summary_of_games(games: pd.DataFrame, ratings: pd.Series, teams: pd.Seri
     :return: Summary DataFrame with columns Rating, Opponent_Rating, Record, Score
     """
     games = games.loc[~(games[["Team_1", "Team_2"]] == "pickup").any(axis=1)]
-    # Reorder such that Team_1 is the winner
-    idx_bad_w_l = games["Score_1"] < games["Score_2"]
-    games = games.copy()
-    games.loc[idx_bad_w_l, ["Team_1", "Team_2", "Score_1", "Score_2"]] = games.loc[
-        idx_bad_w_l, ["Team_2", "Team_1", "Score_2", "Score_1"]
-    ].values
+    games = reorder_games_by_win(games.copy())
     games_dupl = duplicate_games(games)
     summary = pd.DataFrame(index=teams)
     summary["Wins"] = games.groupby("Team_1")["Score_1"].count().reindex(teams).fillna(0).astype(int)
