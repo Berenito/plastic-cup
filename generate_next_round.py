@@ -20,10 +20,18 @@ warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
 def main():
     """
+    Calculate the ratings and summary for the previous round (unless the first round is specified).
+    Ratings are calculated as the linear regression of the score differences capped at 15.
+    Generate the games for the next round according to the minimum-cost pairing of the squares of rating differences
+    (unless the last round plus one is specified).
+
+    Run with arguments:
+    * --path - Path where to store the documents
+    * --round - Round number (1-9), games for round 9 will not be generated
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", required=True, type=Path, help="Path where to store the documents")
-    parser.add_argument("--round", required=True, type=int, help="Round number (1-8)")
+    parser.add_argument("--round", required=True, type=int, help="Round number (1-9)")
     args = parser.parse_args()
 
     # Check if round number is valid
